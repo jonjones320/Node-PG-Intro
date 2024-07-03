@@ -1,4 +1,4 @@
-/** Routes for Biztime companies */
+/** Routes for Biztime invoices */
 
 const db = require("../db");
 const router = express.Router();

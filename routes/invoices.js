@@ -72,22 +72,39 @@ router.post("/", async function (req, res, next) {
 
 // PUT /invoices/[id] : Updates an invoice. 
 // If invoice cannot be found, returns a 404.
-// Needs to be passed in a JSON body of {amt} Returns: {invoice: {id, comp_code, amt, paid, add_date, paid_date}}
+// Needs to be passed in a JSON body of {amt} 
+// Returns: {invoice: {id, comp_code, amt, paid, add_date, paid_date}}
 
 router.patch("/:id", async function (req, res, next) {
   try {
     const { amt, paid } = req.body;
+    const id = req.params.id;
+
+    const invoiceResult = await db.query(
+      `SELECT paid, paid_date FROM invoices WHERE id = $1`, [id]
+    );
+
+    if (invoiceResult.rows.length === 0) {
+      throw new ExpressError("invoice not found!", 404);
+    };
+
+    const currentInvoice = invoiceResult.rows[0].paid_date;
+    let paidDate = currentInvoice.paid_date;
+
+    if (paid && !currentInvoice.paid) {
+      paidDate = new Date();
+    } else if (!paid) {
+      paidDate = null;
+    }
 
     const result = await db.query(
-          `UPDATE invoices SET amt=$2, paid=$3
-           WHERE id = $1
-           RETURNING id, amt, paid`,
-        [amt, paid, req.params.id]
+          `UPDATE invoices SET amt=$1, paid=$2, paid_date=$3
+           WHERE id = $4
+           RETURNING id, comp_code, amt, paid, add_date, paid_date`,
+        [amt, paid, paidDate, id]
     );
-    if (result.rows.length === 0) {
-      throw new ExpressError("Invoice not found!", 404);
-    };
-    return res.json(result.rows[0]);
+
+    return res.json({ invoice: result.rows[0] });
   }
   catch (err) {
     return next(err);

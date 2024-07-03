@@ -1,9 +1,10 @@
 /** Routes for Biztime companies */
 
 const db = require("../db");
-const express = require("express");
 const router = express.Router();
 const slugify = require('slugify');
+const express = require("express");
+const ExpressError = require("../expressError");
 
 
 
@@ -22,6 +23,7 @@ router.get("/", async function (req, res, next) {
 });
 
 
+
 // GET /companies/[code] : Return obj of company: {company: {code, name, description}}
 
 router.get("/code",
@@ -29,16 +31,15 @@ router.get("/code",
   try {
     const code = req.query.code;
 
-    const results = await db.query(
+    const result = await db.query(
       `SELECT code, name, description 
        FROM companies
        WHERE code=$1`, [code]);
 
-    if (results)
-        return res.json(results.rows);
-    else {
-        return res.status(404).json({message: "Company not found."})
-    }
+    if (result.rows.length === 0) {
+        throw new ExpressError("Company not found!", 404);
+    };
+    return res.json(result.rows);
   }
   catch (err) {
     return next(err);
@@ -62,13 +63,16 @@ router.post("/", async function (req, res, next) {
            RETURNING code, name, description`,
         [code, name, description]
     );
-
+    if (result.rows.length === 0) {
+      throw new ExpressError("Company not found!", 404);
+    }
     return res.status(201).json(result.rows[0]);
   }
   catch (err) {
     return next(err);
   }
 });
+
 
 
 // PATCH /companies/[code] : Edit existing company. 
@@ -86,17 +90,16 @@ router.patch("/:code", async function (req, res, next) {
            RETURNING code, name, description`,
         [name, description, req.params.code]
     );
-    if (result) {
-        return res.json(result.rows[0]);
-    } 
-    else {
-        return res.status(404).json({message: "Company not found."})
-    }
+    if (result.rows.length === 0) {
+      throw new ExpressError("Company not found!", 404);
+    };
+    return res.json(result.rows[0]);
   }
   catch (err) {
     return next(err);
   }
 });
+
 
 
 // DELETE /companies/[code] : Deletes company. 
@@ -109,18 +112,16 @@ router.delete("/:code", async function (req, res, next) {
         "DELETE FROM companies WHERE code = $1",
         [req.params.code]
     );
-    if (result) {
-        return res.json({message: "Deleted"});
-    }
-    else {
-        return res.status.apply(404).json({message: "Company not found."})
-    }
+    if (result.rows.length === 0) {
+      throw new ExpressError("Company not found!", 404)
+    };
+    return res.json({message: "Deleted"});
   }
   catch (err) {
     return next(err);
   }
 });
-// end
+
 
 
 module.exports = router;

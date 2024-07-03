@@ -1,8 +1,9 @@
 /** Routes for Biztime companies */
 
 const db = require("../db");
-const express = require("express");
 const router = express.Router();
+const express = require("express");
+const ExpressError = require("../expressError");
 
 
 
@@ -34,12 +35,10 @@ router.get("/id",
       `SELECT id, comp_code, amt, paid, add_date, paid_date 
        FROM invoices
        WHERE id=$1`, [id]);
-
-    if (results)
-        return res.json(results.rows);
-    else {
-        return res.status(404).json({message: "Invoice not found."})
-    }
+    if (results.rows.length === 0) {
+        throw new ExpressError("Invoice not found!", 404);
+    };
+    return res.json(results.rows);
   }
   catch (err) {
     return next(err);
@@ -85,12 +84,10 @@ router.patch("/:id", async function (req, res, next) {
            RETURNING id, amt, paid`,
         [amt, paid, req.params.id]
     );
-    if (result) {
-        return res.json(result.rows[0]);
-    } 
-    else {
-        return res.status(404).json({message: "Invoice not found."})
-    }
+    if (result.rows.length === 0) {
+      throw new ExpressError("Invoice not found!", 404);
+    };
+    return res.json(result.rows[0]);
   }
   catch (err) {
     return next(err);
@@ -111,12 +108,10 @@ router.delete("/:id", async function (req, res, next) {
         "DELETE FROM invoices WHERE id = $1",
         [req.params.id]
     );
-    if (result) {
-        return res.json({message: `Deleted invoice ${req.params.id}`});
-    }
-    else {
-        return res.status.apply(404).json({message: "Invoice not found."})
-    }
+    if (result.rows.length === 0) {
+      throw new ExpressError("Invoice not found!", 404);
+    };
+    return res.json({message: `Deleted invoice ${req.params.id}`});
   }
   catch (err) {
     return next(err);
